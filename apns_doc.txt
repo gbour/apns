@@ -1,0 +1,89 @@
+Facts:
+1) The apns process is started when the webim server is started. In short im_server_supervisor starts it. 
+2) The process is register with name 'apns'
+
+Following are the api's exposed 
+
+1) apns:start_link([AppleApnsServerHost, Port, PathWithCertName, PathwithKeyCertName]) -> {ok, Pid} | {error, Reason} 
+	AppleApnsServerHost : string()
+	Port : integer()
+	PathWithCertName: string() 
+	PathwithKeyCertName: string()
+
+	this is called to start the apns process.
+
+	{ok, State} :  if successfully connects to apple server
+	{stop, Reason} : if apple server cannot be connected.
+e.g.
+apns:start_link(["gateway.sandbox.push.apple.com", 2195, Path++"apns-dev.pem", Path++"apns-dev-key-noenc.pem"]).
+
+2)gen_server:cast(apns, {add_token, SessionId, Token}) -> ok.
+	SessionId: string()
+	Token:string()
+
+	This makes an entry for the Token so that when required notifications can be sent to the device
+	wrt that Token.
+
+	this allways return ok
+e.g.
+gen_server:cast(apns, {add_token, "1234", "2fa454a3e6a8e892b59a22ae4532649cc92e6b7766b6457dcaf6a53518b97cc4"}).
+
+3.a)gen_server:cast(apns, {notify, SessionId ,IM, From, To}) -> ok
+	SessionId:string()
+	IM:string()
+	From:string()
+	To:string()
+	
+	This sends notification to the device having SessionId.
+	Internally it increaments the unread message count by 1 which is notified as no over app_icon on device
+
+	this allways returns ok
+e.g.
+gen_server:cast(apns, {notify, "1234" ,"yah", "webim", "munduwebmessenger1"}).
+
+3.b)gen_server:cast({notify, SessionId, IMType, {FromUID, FromNick}, To, Message}).
+	SessionId:string()
+	IM:string()
+	From:string()
+	To:string()
+	Message:string()
+	
+	This sends notification containing the message also to the device having SessionId. The message is automaticall trauncated if its
+	longer than the limit of apns, the caller need not care about truncating the message they can send the message as it is.
+	Internally it increaments the unread message count by 1 which is notified as no over app_icon on device
+
+	this allways returns ok
+e.g.
+gen_server:cast(apns, {notify, "1234" ,"yah", "webim", "munduwebmessenger1", "hi"}).
+
+
+3.b) gen_server:cast(apns, {notify_service, SessionId, IMType, UserName, Status}) -> ok
+	SessionId:string()
+	IMType:string()
+	UserName:string()
+	Status:atom()	values: connected|disconnected
+
+	This sends notification to device having SessionId about Status as connected/disconnected to/from a perticular account
+3.c) gen_server:cast(apns, {notify, SessionId, disconnected}) -> ok
+	SessionId:string()
+	
+	This sends a timout notification to the client.
+
+4)gen_server:cast(apns, {reset_token, Sessionid) -> ok
+	SessionId:string()
+	
+	This will reset the unread message count to 1. This should be called when device starts polling again.
+
+e.g.
+gen_server:cast(apns, {reset_token, "1234").
+
+5)gen_server:cast(apns, {remove_token, SessionId}).
+	SessionId:string()
+	
+	This should be called before removing the SessionId from server.
+e.g.
+gen_server:cast(apns, {remove_token, "1234"}).
+
+6)gen_server:cast(apns, terminate) -> ok.
+
+this should be called to terminate the apns service.
