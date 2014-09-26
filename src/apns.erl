@@ -246,8 +246,9 @@ notify(Socket, Token, Payload) ->
 	end.
 
 connect(Cert, Key, Address, Port) ->	
-    	ssl:seed("someseedstring"),
-     	Options = [{certfile, Cert}, {keyfile, Key}, {mode, binary}],
+    	%ssl:seed("someseedstring"),
+        ssl:start(),
+     	Options = [Cert, Key, {mode, binary}],
     	Timeout = 60000,
     	io:format("~nConnecting to apple server", []),
     	case ssl:connect(Address, Port, Options, Timeout) of
