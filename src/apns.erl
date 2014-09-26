@@ -9,9 +9,10 @@
 -behaviour(gen_server).
 
 -define(PRINT, io:format).
+-define(NAME(), element(2, erlang:process_info(self(), registered_name))).
 
 %% API
--export([start_link/1]).
+-export([start_link/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -24,8 +25,10 @@
 %% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
 %% Description: Starts the server
 %%--------------------------------------------------------------------
-start_link(Args) ->
-	gen_server:start_link({local,?MODULE}, ?MODULE, Args, []).
+start_link(Args, Opts) ->
+	Name = proplists:get_value(name, Opts, ?MODULE),
+
+	gen_server:start_link({local, Name}, ?MODULE, Args, []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -41,7 +44,9 @@ start_link(Args) ->
 init([Address, Port, Cert, Key]) ->
 	%% remove these 2 application starts' later
 	application:start(inets),
-    	application:start(ssl),
+	application:start(ssl),
+	ssl:start(),
+
 	Tid = ets:new(apns_table, [ordered_set]),
 	case connect(Cert, Key, Address, Port) of
 	{ok, Socket} ->
@@ -143,7 +148,7 @@ handle_cast({notify, SessionId, IMType, {FromUID, FromNick}, To, Message}, #apns
 	{noreply, State};
 
 handle_cast({raw, DeviceId, Msg}, State=#apns_state{ssl_socket=Socket}) ->
-    io:format("generate raw APNS msg~n",[]),
+    io:format("generate raw APNS msg: apns ~p~n",[?NAME()]),
     erlang:spawn(apns, notify, [Socket, DeviceId, Msg]),
 
     {noreply, State};
@@ -245,9 +250,9 @@ notify(Socket, Token, Payload) ->
     	Packet = <<0:8, 32:16, TokenBin/binary, PayloadLength:16, PayloadBin/binary>>,
 	case ssl:send(Socket, Packet) of
 	ok ->
-		apns!notify_success;
+		ok; %apns!notify_success;
 	{error, Reason} ->
-		apns!{notify_error, Reason}
+		ok %apns!{notify_error, Reason}
 	end.
 
 connect(Cert, Key, Address, Port) ->	
@@ -261,7 +266,7 @@ connect(Cert, Key, Address, Port) ->
 	    	io:format("~nConnected ~p~n", [{Soc}]),
 		{ok, Soc};
 	_Other ->
-	    	io:format("~nConnection failed", []),
+	    	io:format("~nConnection failed (~p)~n", [_Other]),
 				
 		{stop, _Other} 
     	end.
