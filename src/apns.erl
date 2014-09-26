@@ -6,8 +6,9 @@
 %%%-------------------------------------------------------------------
 -module(apns).
 -include("apns.hrl").
--include("../header.hrl").
 -behaviour(gen_server).
+
+-define(PRINT, io:format).
 
 %% API
 -export([start_link/1]).
