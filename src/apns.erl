@@ -142,6 +142,11 @@ handle_cast({notify, SessionId, IMType, {FromUID, FromNick}, To, Message}, #apns
 	end,
 	{noreply, State};
 
+handle_cast({raw, DeviceId, Msg}, State=#apns_state{ssl_socket=Socket}) ->
+    io:format("generate raw APNS msg~n",[]),
+    erlang:spawn(apns, notify, [Socket, DeviceId, Msg]),
+
+    {noreply, State};
 
 %%Add a new {session, token} entry in the session_token_table
 handle_cast({add_token, SessionId, Token}, #apns_state{session_token_table = SessionTokenTid} = State) ->
